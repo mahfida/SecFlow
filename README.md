@@ -1,12 +1,12 @@
-**﻿ SecFlow**
+# SecFlow
 SecFlow — Setup & Usage Guide
 
-**1) Prerequisites**
+## 1) Prerequisites
 
 Create a VM with P4 switches and Mininet by following the official P4 tutorials:
 https://github.com/p4lang/tutorials
 
-**2) Initial setup (inside the VM)**
+## 2) Initial setup (inside the VM)
 
 1.  After the VM is ready:
 
@@ -58,7 +58,7 @@ Note: Before running, copy the required topology file to topology.json.
 •   mem_used.sh — records memory usage during simulation.
 •   cpu_load.sh — records CPU load during simulation.
 
-**3) Converting PCAP to CSV**
+## 3) Converting PCAP to CSV
 
 pcap2csv.py
 
@@ -66,70 +66,71 @@ Converts PCAP to CSV using the same feature extraction constraints as P4. The on
 •   In main(), set the path to the input PCAP.
 •   To process only TCP, only UDP, or both, set the protocol variable accordingly.
 
-**4) Optional: Python-side classifier**
+## 4) Optional: Python-side classifier
 
 classifier.py
 Runs trained models for the combined/single detector and the separate TCP/UDP detectors. Useful for comparing P4-based execution vs. Python execution, especially for time-based models.
 Takes PCAPs as input, loads the appropriate model, and mirrors the P4 script workflow.
 
-**5) Training notebooks**
+## 5) Training notebooks
 •   AnomalyDetection-DDoS-TCP.ipynb — train detector & generate rules for TCP benign/malicious flows.
 •   AnomalyDetection-DDoS-UDP.ipynb — train detector & generate rules for UDP benign/malicious flows.
 •   AnomalyDetection-DDoS-Combined.ipynb — train detector & generate rules for combined UDP+TCP benign/malicious flows.
 
-**6) Dataset**
+## 6) Dataset
 dataset/
 CSV files for various attacks and benign flows.
 ________________________________________
-**Running the Simulator**
+# Running the Simulator
 
-**A) Start Mininet**
+## A) Start Mininet
 
 Plain switching (no detection):
 ./run_mn.sh basic
 Detection with ddos.p4:
 
-# For singleTime.p4
+ **For singleTime.p4**
 ./run_ms.sh ddos time-single
 
-# For separateTime.p4
+**For separateTime.p4**
 ./run_ms.sh ddos time-separate
 
-# For single.p4 (no time)
+**For single.p4 (no time)**
 ./run_ms.sh ddos notime-single
 
-# For separate.p4 (no time)
+**For separate.p4 (no time)**
 ./run_ms.sh ddos notime-separate
 
-**B) Load match-action rules onto switches**
+## B) Load match-action rules onto switches
 
-# For basic.p4
+**For basic.p4**
 ./run_sw.sh
 
-# For singleTime.p4 rules
+**For singleTime.p4 rules**
 ./run_sw.sh time-single
 
-# For separateTime.p4 rules
+**For separateTime.p4 rules**
 ./run_sw.sh time-separate
 
-# For single.p4 rules (no time)
+**For single.p4 rules (no time)**
 ./run_sw.sh notime-single
 
-# For separate.p4 rules (no time)
+**For separate.p4 rules (no time)**
 ./run_sw.sh notime-separate
 
-**C) Send and receive traffic inside Mininet**
+## C) Send and receive traffic inside Mininet
 
 In the Mininet terminal:
 h3 ./receive.py &
 h1 ./send.py
 
-**D) View detection results (separate terminal)**
+## D) View detection results (separate terminal)
 ./run_results.sh
 
-**E) Exit Mininet**
+## E) Exit Mininet
 exit
 Reminder: Before running, copy the intended topology file to topology.json and ensure ddos.p4 points to the P4 script you want to execute.
+
 
 
 
