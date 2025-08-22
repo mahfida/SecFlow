@@ -1,0 +1,1090 @@
+//********************************************************************************
+/* -*- P4_16 -*- */
+//********************************************************************************
+//*********************************************************************************/
+
+//********************************************************************************
+/* Features computed
+Dur, min_dur, max_dur, total_dur, approx mean_dur
+Spkts, sbytes, srate
+Dpkts, dbytes, drate
+state_number
+n_in_conn_p_srcip, n_in_conn_p_dstip
+*/
+//********************************************************************************
+
+
+#include <core.p4>
+#include <v1model.p4>
+
+//GLOBAL VARIABLES--------------------------------------
+const bit<16> TYPE_IPV4 = 0x800;
+#define MAX_REGISTER_ENTRIES 500
+#define PACKET_THRESHOLD 1000
+#define FLOW_TIMEOUT 15000000 //15 seconds
+#define CLASS_NOT_SET 10000// A big number
+#define UNITS 1000000
+
+//FLAGS SHOWING STATES-----------------------------------
+#define STATE_RST 1 //A FLAG IN TCP, FOR CONNECTION RESET
+#define STATE_CON 2 //IF THIS IS NOT FIRST PACKET IN A UDP/TCP FLOW 
+#define STATE_REQ 3 //FIRST PACKET OF A TCP SESSION
+#define STATE_INT 4 //FIRST PACKET OF A UDP SESSION
+#define STATE_FIN 6 //A FLAG IN TCP, END OF CONNECTION
+#define STATE_ACC 7 //A FLAG IN TCP, FOR ACK 
+
+
+
+/*************************************************************************
+*********************** H E A D E R S  ***********************************
+*************************************************************************/
+
+typedef bit<9>  egressSpec_t;
+typedef bit<48> macAddr_t;
+typedef bit<32> ip4Addr_t;
+
+header ethernet_t {
+    macAddr_t dstAddr;
+    macAddr_t srcAddr;
+    bit<16>   etherType;
+}
+
+header ipv4_t {
+    bit<4>    version;
+    bit<4>    ihl;
+    bit<8>    diffserv;
+    bit<16>   totalLen;
+    bit<16>   identification;
+    bit<3>    flags;
+    bit<13>   fragOffset;
+    bit<8>    ttl;
+    bit<8>    protocol;
+    bit<16>   hdrChecksum;
+    ip4Addr_t srcAddr;
+    ip4Addr_t dstAddr;
+}
+
+header tcp_t{
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4>  dataOffset;
+    bit<4>  res;
+    bit<1>  cwr;
+    bit<1>  ece;
+    bit<1>  urg;
+    bit<1>  ack;
+    bit<1>  psh;
+    bit<1>  rst;
+    bit<1>  syn;
+    bit<1>  fin;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
+}
+
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> length_;
+    bit<16> checksum;
+}
+
+
+struct metadata {
+
+	// Registers for two Hashes----
+    	//src to dst direction
+	bit<1> direction;
+	bit<32> register_index;
+    	//dst to src direction
+	bit<32> register_index_inverse; 
+    	// src connections counter register
+    	bit<32> register_src_index;
+    	// dot connections counter register
+    	bit<32> register_dst_index;
+	//source counter register index
+	bit<32> source_register_index;
+	//dst counter register index
+	bit<32> dst_register_index;
+	bit<97> stored_flow;
+	bit<97> my_flowID;
+	bit<1> isAttackFlow;
+
+    	// Features to store-----------
+    	//dur_flows: Duration of different flows
+    	//1. record total duration of a transaction
+	bit<48> iat;
+	bit<48> min_iat;
+	bit<48> max_iat; 
+	bit<48> total_dur;
+    	//2-4. srate: Source to destination packets per second
+	bit<32> spkts;
+	bit<32> sbytes;
+	bit<32> srate;
+
+    	//5-7. drate: destination to source packets per second
+	bit<32> dpkts;
+	bit<32> dbytes;
+	bit<32> drate;
+	bit<32> bytes;
+	bit<32> pkts;   
+ 
+    	//9. n_in_conn_p_dstip: number of inbound connections per destination
+	bit<32> n_in_conn_p_dstip;
+	//10. n_in_conn_p_scrip: number of inbound connections per source
+	bit<32> n_in_conn_p_srcip;
+	//12-14. state_con : numerical representation of feature state
+	bit<1> type;
+	bit<1> state_CON;
+    	bit<1> state_INT;
+	bit<1> state_RST;
+	//15-21 .TCP flags
+	bit<1> fin_flag;
+        bit<1> syn_flag;
+        bit<1> psh_flag;
+        bit<1> ack_flag;
+        bit<1> urg_flag;
+        bit<1> ece_flag;
+        bit<1> cwr_flag;
+	
+	bit<32> srcip;
+    	bit<16> srcport;
+    	bit<16> dstport;
+    	bit<16> hdr_srcport;
+    	bit<16> hdr_dstport;
+    	bit<48> time_last_pkt;
+    	bit<48> time_first_pkt;
+	bit<16> total_flows;   
+    	bit<1> is_first;
+    	bit<1> is_empty;
+    	bit<1> is_hash_collision;
+
+    	bit<32> attack_packet;
+	bit<32> nth_attack_packet;
+	bit<16> prevFeature;
+    	bit<16> isTrue;
+	
+	bit<16> delay;
+    	bit<16> class;
+    	bit<16> node_id;
+	bit<16> number_attack_flows;
+	bit<1> forward_controller;
+	
+}
+
+header ipv4_options_t {
+        //Need fields
+        bit<1> copyFlag;
+        bit<2> optClass;
+        bit<5> option;
+        bit<8> optionLength;
+
+        //Option data---used as telemetry
+        ip4Addr_t orignal_srcIP;
+	ip4Addr_t orignal_dstIP;
+	bit<16> spkts; //Source-Dst packets
+	bit<16> dpkts; //Dst-Source packets
+        bit<16> attack_packet; //Number of packets detected as attack
+}
+
+header packet_payload_t{
+	varbit<12096> data; //1512*8
+}
+struct headers {
+	ethernet_t  ethernet;
+    	ipv4_t      ipv4;
+	ipv4_options_t ipv4_option;
+    	tcp_t       tcp;
+    	udp_t	udp;
+	packet_payload_t packet_payload;
+}
+
+/*************************************************************************
+*********************** P A R S E R  *************************************
+**************************************************************************/
+
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+
+    state start {
+        transition parse_ethernet;
+    }
+
+    state parse_ethernet {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+   state parse_ipv4 {
+        packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            6: parse_tcp;
+	    17: parse_udp;
+            default: accept;
+    }
+    }
+    state parse_tcp {
+        packet.extract(hdr.tcp);
+	packet.extract(hdr.packet_payload, (bit <32>) (hdr.ipv4.totalLen - 20 - 20));
+        transition accept;
+    }
+
+    state parse_udp {
+        packet.extract(hdr.udp);
+	packet.extract(hdr.packet_payload, (bit <32>)(hdr.ipv4.totalLen - 20 -8));
+        transition accept;
+    }
+
+}
+
+/*************************************************************************
+************   C H E C K S U M    V E R I F I C A T I O N   *************
+*************************************************************************/
+
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
+    apply {  }
+}
+
+
+/*************************************************************************
+**************  I N G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+
+
+	//********* DATA STRUCTURES**********************************
+	//Srate---------------------------------------------------
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_spkts;//src dst pkt count
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_sbytes;//src dst byte count
+     	//Drate---------------------------------------------------
+    	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_dpkts;//dst src pkt count
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_dbytes;//dst src byte count
+  	
+	//Registers for identifying the flow more apart from hash we may use source port
+	register<bit<97>>(MAX_REGISTER_ENTRIES) reg_forward_flow;
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_srcip;
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_srcip_counter;
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_dstip_counter;
+	register<bit<48>>(MAX_REGISTER_ENTRIES) reg_time_last_pkt;
+	register<bit<48>>(MAX_REGISTER_ENTRIES) reg_time_first_pkt;
+
+	//To Track Min and Max Inter-Packet Durations------
+	register<bit<48>>(MAX_REGISTER_ENTRIES) reg_min_iat;
+        register<bit<48>>(MAX_REGISTER_ENTRIES) reg_max_iat;
+
+   	//Store some statistics for the experiment-----------
+    	counter(1, CounterType.packets) counter_pkts;
+	counter(1, CounterType.packets) number_attack_pkts;//Total number of packets detected as attack
+    	counter(1, CounterType.packets) counter_flows;
+     	//counter<bit<32>(1) number_attack_flows;
+	// Track malware flows and packets count
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_nth_attack_pkts;//keeping track of the the nth attack packet
+	register<bit<32>>(MAX_REGISTER_ENTRIES) reg_attack_pkts;//keeping track of the the attack packet in a flow
+	register<bit<1>>(MAX_REGISTER_ENTRIES) reg_attack_flows;//track flow type (attack/benign)
+	register <bit<16>>(1) reg_number_attack_flows;
+  	/*******************************************************************
+	/********* ACTIONS *************************************************
+	*******************************************************************/
+
+	//********** RESET REGISTERES ****************************************
+    	action reset_registers() {
+		reg_time_last_pkt.write(meta.register_index, 0);
+		reg_srcip.write(meta.register_src_index, 0);
+
+		reg_srcip_counter.write(meta.source_register_index, 0);
+		reg_dstip_counter.write(meta.dst_register_index, 0);
+
+ 		reg_spkts.write(meta.register_index, 0);
+		reg_sbytes.write(meta.register_index, 0);
+
+		reg_dpkts.write(meta.register_index, 0);
+ 		reg_dbytes.write(meta.register_index, 0);
+		reg_forward_flow.write(meta.register_index,0);
+
+ 		reg_nth_attack_pkts.write(meta.register_index, 0);
+		reg_attack_pkts.write(meta.register_index, 0);
+
+		reg_min_iat.write(meta.register_index, 1000000);
+                reg_max_iat.write(meta.register_index, 0);
+		
+    	}
+	
+	//********** SRC CONNECTED FLOWS ***********************************
+	action get_source_dst_reg_indx(){
+		hash(meta.source_register_index, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.srcAddr},(bit<32>)MAX_REGISTER_ENTRIES);
+		hash(meta.dst_register_index, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.dstAddr},(bit<32>)MAX_REGISTER_ENTRIES);
+	}
+
+	//********** DST CONNECTED FLOWS ***********************************
+	action get_dst_source_reg_indx(){
+		hash(meta.source_register_index, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.dstAddr},(bit<32>)MAX_REGISTER_ENTRIES);
+		hash(meta.dst_register_index, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.srcAddr},(bit<32>)MAX_REGISTER_ENTRIES);
+	}
+	//*********** TCP FLOW *********************************************
+	action get_register_index_tcp() {
+     		//Get register position
+		//Syntax: hash(out result, in HashaAlgorithm, in base, in data in max)
+		hash(meta.register_index, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.srcAddr,
+						hdr.ipv4.dstAddr, 
+						hdr.tcp.srcPort, 
+						hdr.tcp.dstPort, 
+						hdr.ipv4.protocol},
+						(bit<32>)MAX_REGISTER_ENTRIES);
+	}
+
+    	//************ UDP FLOW ********************************************
+	action get_register_index_udp() {
+		hash(meta.register_index, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.srcAddr,
+                                hdr.ipv4.dstAddr,
+                                hdr.udp.srcPort,
+                                hdr.udp.dstPort,
+                                hdr.ipv4.protocol},
+                                (bit<32>)MAX_REGISTER_ENTRIES);
+	}
+	//*********** TCP INVERSE FLOW ****************************************
+   	action get_register_index_inverse_tcp() {
+    	//Get register position for the same flow in another directon
+    	//Just inverse the src and dst
+		hash(meta.register_index_inverse, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.dstAddr,
+                                hdr.ipv4.srcAddr,
+                                hdr.tcp.dstPort,
+                                hdr.tcp.srcPort,
+                                hdr.ipv4.protocol},
+                                (bit<32>)MAX_REGISTER_ENTRIES);
+     }
+	//*********** UDP INVERSE FLOW *****************************************
+    	action get_register_index_inverse_udp() {
+		hash(meta.register_index_inverse, HashAlgorithm.crc16, (bit<16>)0, {hdr.ipv4.dstAddr,
+                                hdr.ipv4.srcAddr,
+                                hdr.udp.dstPort,
+                                hdr.udp.srcPort,
+                                hdr.ipv4.protocol},
+                                (bit<32>)MAX_REGISTER_ENTRIES);
+	}
+
+     //************ DROP *****************************************************
+	action drop() {
+		mark_to_drop(standard_metadata);
+    	}
+    
+     //*********** STATE ****************************************************
+	action calc_state() {
+		meta.state_CON = 0;
+		meta.state_INT = 0;
+		meta.state_RST = 0;
+	
+		//The following logic is only approx. correct!
+		if (meta.is_first == 1) {
+			if (hdr.ipv4.protocol == 17) //UDP
+				meta.state_INT = 1;
+		}
+		else {
+             	 	meta.state_CON = 1; //CHECK IF IT MEANS THIS
+       		}
+		if (hdr.ipv4.protocol == 6 && hdr.tcp.rst == (bit<1>)1) {
+			meta.state_RST = 1;
+			meta.state_CON = 0;
+		}
+
+		meta.fin_flag = 0;
+                meta.syn_flag = 0;
+                meta.psh_flag = 0;
+                meta.ack_flag = 0;
+                meta.urg_flag = 0;
+                meta.ece_flag =	0;
+                meta.cwr_flag = 0;
+		meta. type = 1;
+		if(hdr.ipv4.protocol == 6){
+			meta.type = 0;
+			meta.fin_flag = hdr.tcp.fin;
+			meta.syn_flag = hdr.tcp.syn;
+			meta.psh_flag = hdr.tcp.psh;
+			meta.ack_flag = hdr.tcp.ack;
+			meta.urg_flag = hdr.tcp.urg;
+			meta.ece_flag = hdr.tcp.ece;
+			meta.cwr_flag = hdr.tcp.cwr;
+		}
+	}
+
+	//************ CHECK FEATURES ********************************************
+    	action CheckFeature(bit<16> node_id, bit<16> f_inout, bit<64> threshold) {
+	//XX For dur and tcprtt are in microseconds! Thus multiplied by 1000000 if in seconds!
+	//XX For rate comparisons 'th' is multiplied by time delta as division is not allowed
+
+		bit<64> feature = 0;
+        	bit<64> th = threshold;
+		bit<16> f = f_inout + 1;
+
+		if (f == 1) {
+                        feature = (bit<64>)(meta.sbytes + meta.dbytes); // Flowbytes
+                }
+		else if (f == 2) {
+                        feature = (bit<64>)meta.dpkts; //srate
+                     	//th = th*(bit<64>)meta.total_dur;
+                }
+                else if (f == 3) {
+                        feature = (bit<64>)meta.spkts; //drate
+                        //th = th*(bit<64>)meta.total_dur;
+                }
+		else if (f == 4) {
+                        feature = (bit<64>)meta.type; ////TTL of IPv4
+                }
+		else if (f == 5) {
+                        feature = (bit<64>)hdr.ipv4.ttl; ////TTL of IPv4
+                }
+		/*else if (f == 6) {
+                        feature = (bit<64>)meta.min_iat; //min_iat
+			th = th*(bit<64>)UNITS;
+                }
+                else if (f == 7) {
+                        feature = (bit<64>)meta.max_iat; //max_iat
+                       th = th*(bit<64>)UNITS;
+                }
+		else if (f == 5) {
+                        feature = (bit<64>)meta.total_dur; //max_iat
+                       th = th*(bit<64>)UNITS;
+                }*/
+		else if (f == 6) {
+			feature = (bit<64>)meta.n_in_conn_p_srcip; ////n_in_conn_p_src_ip
+		}
+		else if (f == 7) {
+	    		feature = (bit<64>)meta.n_in_conn_p_dstip; ////n_in_conn_p_dst_ip
+		}
+		else if (f == 8) {
+	    		feature = (bit<64>)(meta.bytes); //avg packet len
+			th = th*(bit<64>)(meta.pkts);
+		}
+		else if (f == 9) {
+                        feature = (bit<64>)meta.state_CON; //state con
+                }
+		else if (f == 10) {
+	    		feature = (bit<64>)meta.state_INT; //state int
+		}
+		else if (f == 11) {
+	    		feature = (bit<64>)meta.state_RST; //state rst
+		}
+		else if (f == 12) {
+	    		feature = (bit<64>)meta.fin_flag;
+		}
+		else if (f == 13) {
+	    		feature = (bit<64>)meta.syn_flag;
+		}
+		else if (f == 14) {
+	    		feature = (bit<64>)meta.psh_flag;
+		}
+		else if (f == 15){
+			feature = (bit<64>)meta.ack_flag;
+		}
+		else if(f == 16){
+			feature = (bit <64>)meta.urg_flag;
+		}
+		else if(f == 17){
+			feature = (bit <64>)meta.ece_flag;
+		}
+		else if(f == 18){
+			feature = (bit<64>)meta.cwr_flag;
+		}
+
+		if (feature <= th) meta.isTrue = 1;
+		else meta.isTrue = 0;
+
+		meta.prevFeature = f - 1;
+		meta.node_id = node_id;
+	}
+
+    	//************ SET CLASS ********************************************
+    	action SetClass1(bit<16> node_id, bit<16> class) {
+		meta.class = class;
+		meta.node_id = node_id; //just for debugging otherwise not needed
+    	}
+	
+
+	//*******************************************************************
+	//********* TABLES* *************************************************
+	//*******************************************************************/
+
+	//******** LEVELS *************************************************
+	table level_1_1{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;	    
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+	    		SetClass1;
+		}
+	    	size = 1024;
+	}
+	
+	table level_1_2{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+	table level_1_3{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+	
+	table level_1_4{
+		key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+	table level_1_5{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+	table level_1_6{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+	table level_1_7{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+	table level_1_8{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    }
+	    size = 1024;
+	}
+
+	table level_1_9{
+	    key = {
+		meta.node_id: exact;
+		meta.prevFeature: exact;
+		meta.isTrue: exact;
+	    }
+	    actions = {
+		NoAction;
+		CheckFeature;
+		SetClass1;
+	    }
+	    size = 1024;
+	}
+
+	table level_1_10{
+	    	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+	table level_1_11{
+	   	key = {
+			meta.node_id: exact;
+			meta.prevFeature: exact;
+			meta.isTrue: exact;
+	    	}
+	    	actions = {
+			NoAction;
+			CheckFeature;
+			SetClass1;
+	    	}
+	    	size = 1024;
+	}
+
+    //******** IP EXACT *************************************************
+    /* This will send the packet to a specifiC port of the switch for output*/
+    	action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
+                standard_metadata.egress_spec = port;
+                hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+                hdr.ethernet.dstAddr = dstAddr;
+                hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        }
+
+
+	action sdn(){
+        	// Add option
+		hdr.ipv4.ttl = hdr.ipv4.ttl + 1;
+        	hdr.ipv4_option.setValid();
+        	hdr.ipv4_option.copyFlag =0;
+        	hdr.ipv4_option.optClass =0;
+        	hdr.ipv4_option.option =31;
+        	hdr.ipv4_option.optionLength=8; //Total number of bytes
+        	hdr.ipv4_option.orignal_srcIP=hdr.ipv4.dstAddr;
+        	hdr.ipv4_option.orignal_dstIP=hdr.ipv4.srcAddr;
+	 
+		hdr.ipv4_option.spkts = (bit<16>)(standard_metadata.deq_timedelta);
+		hdr.ipv4_option.dpkts= (bit<16>)(meta.dpkts);
+		hdr.ipv4_option.attack_packet= (bit<16>)(meta.attack_packet);
+
+        	//Change address to sdn controller's
+        	hdr.ipv4.srcAddr = 0x0a000101;
+
+		hdr.ipv4.dstAddr =  0x0A000303;
+        	//Change length field of ipv4
+        	hdr.ipv4.ihl = hdr.ipv4.ihl + 4; //(4 times 32 bits)
+        	hdr.ipv4.totalLen =  hdr.ipv4.totalLen + 16;//16 bytes of option
+		hdr.packet_payload.setInvalid();       
+ }
+
+    table ipv4_lpm{
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            ipv4_forward;
+	    drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
+    	}
+
+   /*table sdn_exact{
+        key = {
+            meta.forward_controller: exact;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
+        }
+    
+
+    table debug_features{
+		key={
+		standard_metadata.deq_timedelta: exact;
+                //meta.direction: exact;
+                //meta.sbytes: exact;
+                //meta.dbytes: exact;
+                //meta.srate: exact;
+                //meta.drate: exact;
+                //meta.min_iat: exact;
+                //meta.max_iat: exact;
+        }
+          actions = {
+                        NoAction;
+                }
+                size = 1024;
+
+        }
+   */
+    //*******************************************************************
+    //********* APPLY * *************************************************
+    //*******************************************************************
+    apply{
+    	meta.forward_controller=0;
+	meta.class = CLASS_NOT_SET;
+	//check the direction of packets going.     
+	    	if (hdr.ipv4.isValid()) {
+		//Calculate all features
+		//TODO optimize : feature needs to be calculated only if needed
+			if (hdr.ipv4.protocol == 6 || hdr.ipv4.protocol == 17) {//We treat only TCP or UDP packets	
+				counter_pkts.count(0);
+				//************ SE DIRECTION 1 ***************************************
+			    	if (hdr.ipv4.protocol == 6) {
+						meta.my_flowID[31:0]=hdr.ipv4.srcAddr;
+						meta.my_flowID[63:32]=hdr.ipv4.dstAddr; 
+						meta.my_flowID[79:64]=hdr.tcp.srcPort;
+                                		meta.my_flowID[95:80]=hdr.tcp.dstPort;
+						meta.my_flowID[96:96]=0;
+						meta.hdr_srcport = hdr.tcp.srcPort;//its inverse
+                                        	meta.hdr_dstport = hdr.tcp.dstPort;
+                                                get_register_index_tcp();
+						get_register_index_inverse_tcp();
+						
+                                        }
+                                        else {
+						meta.my_flowID[31:0]=hdr.ipv4.srcAddr;
+                                                meta.my_flowID[63:32]=hdr.ipv4.dstAddr;
+                                                meta.my_flowID[79:64]=hdr.udp.srcPort;
+                                                meta.my_flowID[95:80]=hdr.udp.dstPort;
+						meta.my_flowID[96:96]= 1;
+                                                meta.hdr_srcport = hdr.udp.srcPort;//its inverse
+                                                meta.hdr_dstport = hdr.udp.dstPort;
+						get_register_index_udp();
+						get_register_index_inverse_udp();
+					}	
+					 meta.stored_flow = 0;
+					 reg_forward_flow.read(meta.stored_flow, meta.register_index);
+					
+					//Already in forward flow
+					if(meta.stored_flow == meta.my_flowID){
+						meta.direction = 1;
+						meta.is_first = 0;
+						}	
+					else{ //Check in the reverse flow
+						reg_forward_flow.read(meta.stored_flow, meta.register_index_inverse);
+							meta.my_flowID[31:0]=hdr.ipv4.dstAddr;
+                                                        meta.my_flowID[63:32]=hdr.ipv4.srcAddr;
+                                     	                meta.my_flowID[79:64]=meta.hdr_dstport;
+                                     			meta.my_flowID[95:80]=meta.hdr_srcport;
+						if(meta.stored_flow == meta.my_flowID){
+							meta.direction = 0;
+							meta.is_first = 0;
+							meta.register_index = meta.register_index_inverse;
+							} 
+						//If even not in reverse flow, then this is a new flow 
+						else{
+							meta.my_flowID[31:0]=hdr.ipv4.srcAddr;
+                                                	meta.my_flowID[63:32]=hdr.ipv4.dstAddr;
+                                                	meta.my_flowID[79:64]=meta.hdr_srcport;
+                                                	meta.my_flowID[95:80]=meta.hdr_dstport;
+							reg_forward_flow.write(meta.register_index, meta.my_flowID);	
+							reg_attack_flows.write(meta.register_index, 0);
+							meta.direction = 1;
+							meta.is_first = 1;
+						}
+					}
+			
+
+				//***** Forward Direction***************				
+				if (meta.direction == 1) {
+					get_source_dst_reg_indx();
+					//Read reg_to_check_collision srcip, srcport, dstport and flows connected to a source and destinati
+					//reg_srcip.read(meta.srcip, meta.register_index);
+					//reg_time_last_pkt.read(meta.time_last_pkt, (bit<32>)meta.register_index);
+					
+				 	//if this is the first packet within the flow
+					if (meta.is_first == 1) {
+					reg_srcip.write((bit<32>)meta.register_index, hdr.ipv4.srcAddr);
+					reg_time_first_pkt.write((bit<32>)meta.register_index, standard_metadata.ingress_global_timestamp);
+					reg_time_last_pkt.write((bit<32>)meta.register_index,  standard_metadata.ingress_global_timestamp);
+					counter_flows.count(0);
+					
+					//Update srcip_counter
+                                        reg_srcip_counter.read(meta.n_in_conn_p_srcip, (bit<32>)meta.source_register_index);
+					meta.n_in_conn_p_srcip = meta.n_in_conn_p_srcip + 1;
+					reg_srcip_counter.write((bit<32>)meta.source_register_index, meta.n_in_conn_p_srcip);
+						
+					//Update dstip_counter		
+					reg_dstip_counter.read(meta.n_in_conn_p_dstip, (bit<32>)meta.dst_register_index);
+					meta.n_in_conn_p_dstip = meta.n_in_conn_p_dstip + 1;
+					reg_dstip_counter.write((bit<32>)meta.dst_register_index, meta.n_in_conn_p_dstip);
+
+					//Store max and min durations
+					reg_max_iat.write((bit<32>)meta.register_index, 0);
+                                	reg_min_iat.write((bit<32>)meta.register_index, 1000000);
+					}
+
+					reg_spkts.read(meta.spkts, (bit<32>)meta.register_index);
+					meta.spkts = meta.spkts + 1;
+					reg_spkts.write((bit<32>)meta.register_index, meta.spkts);
+					
+					//read_sbytes also used for sload
+					reg_sbytes.read(meta.sbytes, (bit<32>)meta.register_index);
+					if(hdr.ipv4.protocol == 17){
+                                                meta.sbytes = meta.sbytes + standard_metadata.packet_length - 10;
+                                        }else{
+                                        meta.sbytes = meta.sbytes + standard_metadata.packet_length;
+                                        }
+					reg_sbytes.write((bit<32>)meta.register_index, meta.sbytes);
+					
+					//read all reverse flow features
+					reg_dbytes.read(meta.dbytes, (bit<32>)meta.register_index);
+					reg_dpkts.read(meta.dpkts, (bit<32>)meta.register_index);
+					
+					//read incoming and outgoing number of flows
+					reg_srcip_counter.read(meta.n_in_conn_p_srcip, (bit<32>)meta.source_register_index);
+                                	reg_dstip_counter.read(meta.n_in_conn_p_dstip, (bit<32>)meta.dst_register_index);
+					
+					//For avg packet length
+                                        meta.bytes =  meta.sbytes;
+                                        meta.pkts = meta.spkts;
+			}//end of direction = 1 ****************************************************
+			
+			//************* DIRECTION 0 ************************************************
+	     		else {
+					get_dst_source_reg_indx();
+					reg_time_last_pkt.read(meta.time_last_pkt, (bit<32>)meta.register_index);
+
+					//dpkts and dload
+					reg_dpkts.read(meta.dpkts, (bit<32>)meta.register_index);	
+					meta.dpkts = meta.dpkts + 1;
+ 					reg_dpkts.write((bit<32>)meta.register_index, meta.dpkts);	
+ 		
+					//dbytes
+					reg_dbytes.read(meta.dbytes, (bit<32>)meta.register_index);
+					if(hdr.ipv4.protocol == 17){
+						meta.dbytes = meta.dbytes + standard_metadata.packet_length -10;
+					}else{
+					meta.dbytes = meta.dbytes + standard_metadata.packet_length;
+					}
+					reg_dbytes.write((bit<32>)meta.register_index, meta.dbytes);
+					//Read other features from the sources to destination direction
+					reg_sbytes.read(meta.sbytes, (bit<32>)meta.register_index);
+					reg_spkts.read(meta.spkts, (bit<32>)meta.register_index);
+					
+					//read number of incoming and outgoing flows
+					reg_srcip_counter.read(meta.n_in_conn_p_dstip, (bit<32>)meta.source_register_index);
+                                	reg_dstip_counter.read(meta.n_in_conn_p_srcip, (bit<32>)meta.dst_register_index);
+				
+					//For avg packet length
+					meta.bytes =  meta.dbytes;
+					meta.pkts = meta.dpkts;
+	      		}// end of direction = 0*************************************************
+			
+			//***** READ COMMON FEATURES*********************************************
+				reg_time_first_pkt.read(meta.time_first_pkt, (bit<32>)meta.register_index);
+				reg_time_last_pkt.read(meta.time_last_pkt, (bit<32>)meta.register_index);
+				
+				//inter-packet duration, between now and when this transaction first started
+				meta.iat = standard_metadata.ingress_global_timestamp - meta.time_last_pkt;
+				if((meta.spkts + meta.dpkts) > 1){
+					meta.srate = meta.spkts*UNITS; //srate in packets per second
+                			meta.drate = meta.dpkts*UNITS;
+				}
+				else{
+					meta.srate = 0;
+					meta.drate = 0;
+				}
+
+				//****Compute the duration statistics here************
+				meta.total_dur =  standard_metadata.ingress_global_timestamp - meta.time_first_pkt;
+				reg_min_iat.read(meta.min_iat, (bit<32>) meta.register_index);
+				reg_max_iat.read(meta.max_iat, (bit<32>) meta.register_index);
+				if(meta.min_iat > meta.iat){
+					meta.min_iat = meta.iat;
+					reg_min_iat.write((bit<32>) meta.register_index, meta.min_iat);
+				}
+				if(meta.max_iat < meta.iat){
+                                        meta.max_iat = meta.iat;
+                                        reg_max_iat.write((bit<32>) meta.register_index, meta.max_iat);
+                                }
+				
+				reg_time_last_pkt.write((bit<32>)meta.register_index, standard_metadata.ingress_global_timestamp);
+			
+				calc_state();
+				//init_features();			
+				//debug_features.apply();
+				//Start with parent node of decision tree
+				meta.prevFeature = 0;
+				meta.isTrue = 1;
+				//reg_marked_benign.read(meta.marked_benign, (bit<32>)meta.register_index);
+				//if (meta.marked_malware == 1) {
+				//	meta.class = 1;//No need to check again!
+				//}	
+				//else {
+				level_1_1.apply();
+				if (meta.class == CLASS_NOT_SET) {
+		  			level_1_2.apply();
+		  		if (meta.class == CLASS_NOT_SET) {
+		    			level_1_3.apply();
+		    		if (meta.class == CLASS_NOT_SET) {
+					level_1_4.apply();
+				if (meta.class == CLASS_NOT_SET) {
+			  		level_1_5.apply();
+			  	if (meta.class == CLASS_NOT_SET) {
+			    		level_1_6.apply();
+			    	if (meta.class == CLASS_NOT_SET) {
+			      		level_1_7.apply();
+			      	if (meta.class == CLASS_NOT_SET) {
+					level_1_8.apply();
+				if (meta.class == CLASS_NOT_SET) {
+				  	level_1_9.apply();
+				if (meta.class == CLASS_NOT_SET) {
+				    	level_1_10.apply();
+				if (meta.class == CLASS_NOT_SET){ 
+					level_1_11.apply();
+				}}}}}}}}}}//}//End of Else of Levels
+
+			// IF CLASS IF TRUE
+			reg_attack_pkts.read(meta.attack_packet, (bit<32>)meta.register_index);
+			if(meta.class == 1) {
+				number_attack_pkts.count(0);
+				//We detect the flow as malware first
+				meta.attack_packet = meta.attack_packet+1;
+				reg_attack_pkts.write((bit<32>)meta.register_index, meta.attack_packet);
+
+				// The first detected packet of a flow is reported
+				if(meta.attack_packet == 1){
+					meta.forward_controller = 1;
+					// Let n be 3
+					reg_nth_attack_pkts.write((bit<32>)meta.register_index, 3);
+				}
+				// nth packet multiple of 3
+				reg_nth_attack_pkts.read(meta.nth_attack_packet, (bit<32>)meta.register_index);
+				if(meta.attack_packet == meta.nth_attack_packet)
+				{
+					meta.forward_controller = 1;
+					meta.nth_attack_packet = meta.nth_attack_packet+3;
+                                        reg_nth_attack_pkts.write((bit<32>)meta.register_index, meta.nth_attack_packet);
+				}
+			}
+
+			// Decide about the flow type
+			reg_number_attack_flows.read(meta.number_attack_flows, 0);
+			reg_attack_flows.read(meta.isAttackFlow, (bit<32>)meta.register_index);
+			if((meta.attack_packet*2 + 1) > (meta.spkts+meta.dpkts)){
+				if(meta.isAttackFlow ==0){
+					reg_attack_flows.write((bit<32>)meta.register_index, 1);
+					meta.number_attack_flows = meta.number_attack_flows + 1;
+					reg_number_attack_flows.write(0, meta.number_attack_flows);
+				}}
+			else{
+				if(meta.isAttackFlow ==1){
+                                        reg_attack_flows.write((bit<32>)meta.register_index, 0);
+                                        meta.number_attack_flows = meta.number_attack_flows - 1;
+					reg_number_attack_flows.write(0, meta.number_attack_flows);
+                                }}
+	      }//End of if (hdr.ipv4.protocol == 6 || hdr.ipv4.protocol == 17)
+	      // Decision about whether to send copy of the packet to SDN
+        
+		// A packet is sent to SDN when only
+		// a flow is detected for the first time as attack or benign	
+		if(meta.forward_controller >  0){
+                	sdn();
+		}
+		ipv4_lpm.apply();
+         	
+	}//End of if hdr.ipv4.isValid()
+	}//End of apply
+}
+
+/*************************************************************************
+****************  E G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
+    apply { 
+
+	if(meta.forward_controller==1){
+		hdr.ipv4_option.spkts = (bit<16>)standard_metadata.deq_timedelta;
+	}
+	
+ }
+}
+
+/*************************************************************************
+*************   C H E C K S U M    C O M P U T A T I O N   **************
+*************************************************************************/
+
+control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+     apply {
+	update_checksum(
+	    hdr.ipv4.isValid(),
+            { hdr.ipv4.version,
+	      hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr },
+            hdr.ipv4.hdrChecksum,
+	    HashAlgorithm.csum16);
+    }
+}
+
+/*************************************************************************
+
+***********************  D E P A R S E R  *******************************
+*************************************************************************/
+
+control MyDeparser(packet_out packet, in headers hdr) {
+    apply {
+        packet.emit(hdr.ethernet);
+        packet.emit(hdr.ipv4);
+	packet.emit(hdr.ipv4_option);
+        packet.emit(hdr.tcp);
+	packet.emit(hdr.udp);
+	//packet.emit(hdr.packet_payload);
+    }
+}
+
+/*************************************************************************
+***********************  S W I T C H  *******************************
+*************************************************************************/
+
+V1Switch(
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
+) main;

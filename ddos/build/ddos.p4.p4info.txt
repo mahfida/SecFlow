@@ -1,0 +1,800 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 49106493
+    name: "MyIngress.level_1_1"
+    alias: "level_1_1"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 45848621
+    name: "MyIngress.level_1_2"
+    alias: "level_1_2"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 42755531
+    name: "MyIngress.level_1_3"
+    alias: "level_1_3"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 38687570
+    name: "MyIngress.level_1_4"
+    alias: "level_1_4"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 35142886
+    name: "MyIngress.level_1_5"
+    alias: "level_1_5"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 46402107
+    name: "MyIngress.level_1_6"
+    alias: "level_1_6"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 42129337
+    name: "MyIngress.level_1_7"
+    alias: "level_1_7"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 40717709
+    name: "MyIngress.level_1_8"
+    alias: "level_1_8"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 36350216
+    name: "MyIngress.level_1_9"
+    alias: "level_1_9"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 36280394
+    name: "MyIngress.level_1_10"
+    alias: "level_1_10"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 36308550
+    name: "MyIngress.level_1_11"
+    alias: "level_1_11"
+  }
+  match_fields {
+    id: 1
+    name: "meta.node_id"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "meta.prevFeature"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "meta.isTrue"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 24946554
+  }
+  action_refs {
+    id: 19929616
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 37375156
+    name: "MyIngress.ipv4_lpm"
+    alias: "ipv4_lpm"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: LPM
+  }
+  action_refs {
+    id: 28792405
+  }
+  action_refs {
+    id: 25652968
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 33563654
+    name: "MyIngress.debug_features"
+    alias: "debug_features"
+  }
+  match_fields {
+    id: 1
+    name: "standard_metadata.deq_timedelta"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
+actions {
+  preamble {
+    id: 21209142
+    name: "MyIngress.get_source_dst_reg_indx"
+    alias: "get_source_dst_reg_indx"
+  }
+}
+actions {
+  preamble {
+    id: 18783485
+    name: "MyIngress.get_dst_source_reg_indx"
+    alias: "get_dst_source_reg_indx"
+  }
+}
+actions {
+  preamble {
+    id: 32843662
+    name: "MyIngress.get_register_index_tcp"
+    alias: "get_register_index_tcp"
+  }
+}
+actions {
+  preamble {
+    id: 19221526
+    name: "MyIngress.get_register_index_udp"
+    alias: "get_register_index_udp"
+  }
+}
+actions {
+  preamble {
+    id: 29040337
+    name: "MyIngress.get_register_index_inverse_tcp"
+    alias: "get_register_index_inverse_tcp"
+  }
+}
+actions {
+  preamble {
+    id: 25344480
+    name: "MyIngress.get_register_index_inverse_udp"
+    alias: "get_register_index_inverse_udp"
+  }
+}
+actions {
+  preamble {
+    id: 25652968
+    name: "MyIngress.drop"
+    alias: "drop"
+  }
+}
+actions {
+  preamble {
+    id: 17435419
+    name: "MyIngress.calc_state"
+    alias: "calc_state"
+  }
+}
+actions {
+  preamble {
+    id: 24946554
+    name: "MyIngress.CheckFeature"
+    alias: "CheckFeature"
+  }
+  params {
+    id: 1
+    name: "node_id"
+    bitwidth: 16
+  }
+  params {
+    id: 2
+    name: "f_inout"
+    bitwidth: 16
+  }
+  params {
+    id: 3
+    name: "threshold"
+    bitwidth: 64
+  }
+}
+actions {
+  preamble {
+    id: 19929616
+    name: "MyIngress.SetClass1"
+    alias: "SetClass1"
+  }
+  params {
+    id: 1
+    name: "node_id"
+    bitwidth: 16
+  }
+  params {
+    id: 2
+    name: "class"
+    bitwidth: 16
+  }
+}
+actions {
+  preamble {
+    id: 28792405
+    name: "MyIngress.ipv4_forward"
+    alias: "ipv4_forward"
+  }
+  params {
+    id: 1
+    name: "dstAddr"
+    bitwidth: 48
+  }
+  params {
+    id: 2
+    name: "port"
+    bitwidth: 9
+  }
+}
+actions {
+  preamble {
+    id: 32861752
+    name: "MyIngress.sdn"
+    alias: "sdn"
+  }
+}
+counters {
+  preamble {
+    id: 302801566
+    name: "MyIngress.counter_pkts"
+    alias: "counter_pkts"
+  }
+  spec {
+    unit: PACKETS
+  }
+  size: 1
+}
+counters {
+  preamble {
+    id: 312409793
+    name: "MyIngress.number_attack_pkts"
+    alias: "number_attack_pkts"
+  }
+  spec {
+    unit: PACKETS
+  }
+  size: 1
+}
+counters {
+  preamble {
+    id: 303000650
+    name: "MyIngress.counter_flows"
+    alias: "counter_flows"
+  }
+  spec {
+    unit: PACKETS
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 374280261
+    name: "MyIngress.reg_spkts"
+    alias: "reg_spkts"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 384352361
+    name: "MyIngress.reg_sbytes"
+    alias: "reg_sbytes"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 376327433
+    name: "MyIngress.reg_dpkts"
+    alias: "reg_dpkts"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 379965375
+    name: "MyIngress.reg_dbytes"
+    alias: "reg_dbytes"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 369516157
+    name: "MyIngress.reg_forward_flow"
+    alias: "reg_forward_flow"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 97
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 373356790
+    name: "MyIngress.reg_srcip"
+    alias: "reg_srcip"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 372037696
+    name: "MyIngress.reg_srcip_counter"
+    alias: "reg_srcip_counter"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 383957350
+    name: "MyIngress.reg_dstip_counter"
+    alias: "reg_dstip_counter"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 380584940
+    name: "MyIngress.reg_time_last_pkt"
+    alias: "reg_time_last_pkt"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 377665430
+    name: "MyIngress.reg_time_first_pkt"
+    alias: "reg_time_first_pkt"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 384922559
+    name: "MyIngress.reg_nth_attack_pkts"
+    alias: "reg_nth_attack_pkts"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 385062630
+    name: "MyIngress.reg_attack_pkts"
+    alias: "reg_attack_pkts"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 378421771
+    name: "MyIngress.reg_attack_flows"
+    alias: "reg_attack_flows"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 1
+      }
+    }
+  }
+  size: 1000000
+}
+registers {
+  preamble {
+    id: 382258436
+    name: "MyIngress.reg_number_attack_flows"
+    alias: "reg_number_attack_flows"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 16
+      }
+    }
+  }
+  size: 1
+}
+type_info {
+}

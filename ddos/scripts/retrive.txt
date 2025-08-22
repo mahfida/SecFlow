@@ -1,0 +1,8 @@
+
+* meta.direction      : 01
+* meta.sbytes         : 000005ea
+* meta.dbytes         : 00000000
+* meta.srate          : 00000000
+* meta.drate          : 00000000
+* meta.min_iat        : 000000000000
+* meta.max_iat        : 000000000000
