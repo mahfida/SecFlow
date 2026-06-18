@@ -187,7 +187,7 @@ h1 ./send_pcap.py
 
 ## E) Exit Mininet
 exit
-Reminder: Before running, copy the intended topology file to topology.json and ensure flowsec.p4 contains the P4 script you want to execute.
+Reminder: Before running, copy the intended topology file to topology.json and ensure secflow.p4 contains the P4 script you want to execute.
 
 
 
